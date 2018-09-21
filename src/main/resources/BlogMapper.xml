@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.together.mybatis.BlogMapper">
+
+    <resultMap id="baseResultMap" type="Blog">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="status" property="status"/>
+
+        <association property="author" javaType="Author">
+            <constructor>
+                <idArg column="author_id" javaType="int"/>
+                <arg column="author_name" javaType="String"/>
+            </constructor>
+        </association>
+
+        <collection property="comments" ofType="Comment" javaType="List">
+            <constructor>
+                <idArg column="comment_id" javaType="int"/>
+                <arg column="comment_blog_id" javaType="int"/>
+                <arg column="comment_content" javaType="String"/>
+            </constructor>
+        </collection>
+    </resultMap>
+
+    <sql id="columnFields">
+        B.id as `id`,
+        B.username as `username`,
+        B.author_id as `author_id`,
+        B.status as `status`,
+        A.author_name as `author_name`,
+        C.id as `comment_id`,
+        C.blog_id as `comment_blog_id`,
+        C.content as `comment_content`
+    </sql>
+
+    <select id="selectBlogById" parameterType="int" resultMap="baseResultMap" useCache="true">
+      select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        where B.id = #{id}
+    </select>
+
+    <select id="selectBlogByIdAndAuthorName" parameterType="HashMap" resultMap="baseResultMap" useCache="true">
+        select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        where B.id = #{id}
+        <if test="authorName">
+            and A.author_name = #{authorName}
+        </if>
+    </select>
+
+    <select id="selectBlogByIdAndAuthor" parameterType="HashMap" resultMap="baseResultMap" useCache="true">
+        select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        where B.id = #{id}
+        <choose>
+            <when test="author.id != null">
+                and A.author_id = #{author.id}
+            </when>
+            <when test="author.authorName != null">
+                and A.author_name like  #{author.authorName}
+            </when>
+        </choose>
+    </select>
+
+    <select id="SelectBlogByAuthor" parameterType="Author" resultMap="baseResultMap" useCache="true">
+        select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        <where>
+            <if test="id != null">
+                and A.author_id = #{id}
+            </if>
+            <if test="authorName != null">
+                and A.author_name like  #{authorName}
+            </if>
+        </where>
+        limit 1
+    </select>
+
+    <insert id="save" parameterType="Blog">
+        insert into Blog (username) values (#{username})
+    </insert>
+
+    <update id="update" parameterType="Blog">
+        update BLOG
+        <set>
+            <if test="username != null">username=#{username},</if>
+            <if test="status != null">status=#{status},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <select id="selectByIds" parameterType="List" resultMap="baseResultMap" useCache="true">
+        select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        where B.id in
+        <foreach collection="ids" index="index" item="item" open="("  separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="selectByUsername" parameterType="String" resultMap="baseResultMap" useCache="true">
+        select <include refid="columnFields"/>
+        from Blog B
+        left join Author A on B.author_id = A.id
+        left join BLOG_COMMENT C on B.id = C.blog_id
+        where B.username like #{username}
+    </select>
+
+    <cache eviction="FIFO" readOnly="true" type="com.together.mybatis.MyCacheImpl" />
+</mapper>
